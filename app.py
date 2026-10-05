@@ -2,8 +2,13 @@
 보너스 과제 1: 부산 기온 탐색 대시보드 (Streamlit)
 실행: streamlit run app.py  → 브라우저에서 http://localhost:8501
 """
+import matplotlib.pyplot as plt
 import pandas as pd
 import streamlit as st
+
+# 그래프는 matplotlib 이미지로 그림 (Windows에서 st.line_chart 등이 빈칸으로 보이는 문제 회피)
+plt.rcParams["font.family"] = "Malgun Gothic"
+plt.rcParams["axes.unicode_minus"] = False
 
 st.set_page_config(page_title="부산 기온 트렌드 대시보드", page_icon="🌡️", layout="wide")
 
@@ -54,25 +59,50 @@ c4.metric("강수일 (≥1mm)", f"{int((view['precipitation'] >= 1).sum())} 일"
 
 # ---------------- 차트 ----------------
 st.subheader(f"일평균기온과 {ma_window}일 이동평균")
-st.line_chart(view.set_index("date")[["temp_mean", "ma"]]
-              .rename(columns={"temp_mean": "일평균기온", "ma": f"{ma_window}일 이동평균"}))
+fig, ax = plt.subplots(figsize=(12, 4))
+ax.plot(view["date"], view["temp_mean"], color="lightgray", lw=0.8, label="일평균기온")
+ax.plot(view["date"], view["ma"], color="tab:blue", lw=1.8, label=f"{ma_window}일 이동평균")
+o = view[view["is_outlier_dyn"]]
+ax.scatter(o["date"], o["temp_mean"], color="red", s=18, zorder=3, label="급변일")
+ax.set_ylabel("기온 (°C)")
+ax.legend(loc="lower right")
+ax.grid(alpha=0.3)
+fig.tight_layout()
+st.pyplot(fig)
+plt.close(fig)
 
 left, right = st.columns(2)
 with left:
     st.subheader("연도별 평균기온")
-    yearly = view.groupby(view["date"].dt.year)["temp_mean"].mean().round(2)
-    yearly.index = yearly.index.astype(str)
-    st.bar_chart(yearly)
+    yearly = view.groupby(view["date"].dt.year)["temp_mean"].mean()
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.bar(yearly.index.astype(str), yearly, color="tab:red")
+    ax.set_ylim(yearly.min() - 1, yearly.max() + 0.5)  # 1℃ 차이가 보이도록 y축 확대
+    for x, v in zip(yearly.index.astype(str), yearly):
+        ax.text(x, v + 0.05, f"{v:.2f}", ha="center", fontsize=9)
+    ax.set_ylabel("기온 (°C)")
+    ax.grid(alpha=0.3, axis="y")
+    fig.tight_layout()
+    st.pyplot(fig)
+    plt.close(fig)
 with right:
     st.subheader("월별 기온 표준편차 (변동성)")
-    mstd = view.groupby(view["date"].dt.month)["temp_mean"].std().round(2)
-    mstd.index = [f"{m:02d}월" for m in mstd.index]
-    st.bar_chart(mstd)
+    mstd = view.groupby(view["date"].dt.month)["temp_mean"].std()
+    fig, ax = plt.subplots(figsize=(6, 4))
+    ax.bar([f"{m}월" for m in mstd.index], mstd, color="tab:blue")
+    ax.set_ylabel("표준편차 (°C)")
+    ax.grid(alpha=0.3, axis="y")
+    fig.tight_layout()
+    st.pyplot(fig)
+    plt.close(fig)
 
 st.subheader("급변일 목록")
 out = view[view["is_outlier_dyn"]][["date", "temp_mean", "temp_change", "precipitation"]].copy()
-out["방향"] = out["temp_change"].apply(lambda x: "급상승" if x > 0 else "급하강")
-out["date"] = out["date"].dt.date
-st.dataframe(out.rename(columns={"date": "날짜", "temp_mean": "평균기온(℃)",
-                                 "temp_change": "전일 대비(℃)", "precipitation": "강수(mm)"}),
-             hide_index=True)
+if out.empty:
+    st.info("선택한 조건에 급변일이 없습니다.")
+else:
+    out["방향"] = out["temp_change"].apply(lambda x: "급상승" if x > 0 else "급하강")
+    out["date"] = out["date"].dt.strftime("%Y-%m-%d")
+    out = out.rename(columns={"date": "날짜", "temp_mean": "평균기온(℃)",
+                              "temp_change": "전일 대비(℃)", "precipitation": "강수(mm)"})
+    st.table(out.round(1).astype(str).set_index("날짜"))  # 단순 HTML 표 (빈칸 문제 회피)
