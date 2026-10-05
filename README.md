@@ -7,12 +7,15 @@
 ```
 busan-temperature-trend/
 ├── data/
-│   ├── busan_weather_raw.csv      # collect.py 원본 (파일명은 실제 이름 확인)
+│   ├── busan_weather_2020_2025.csv  # collect.py 원본 데이터
 │   ├── busan_weather_clean.csv    # prepare.py 정제 결과
 │   ├── prepare_log.txt            # 정제 점검 로그
-│   └── analysis_log.txt           # 분석 수치 로그
+│   ├── analysis_log.txt           # 분석 수치 로그
+│   └── bonus_log.txt              # 보너스 분해·예측 수치 로그
 ├── images/                        # 그래프 (01~05), 대시보드 스크린샷
-├── docs/busan_insights.xlsx       # 인사이트 정리표
+├── docs/
+│   ├── busan_insights.xlsx        # 인사이트 정리표
+│   └── presentation.pptx          # 발표 자료
 ├── collect.py                     # 1. 데이터 수집 (Open-Meteo API)
 ├── prepare.py                     # 2. 결측치·논리 오류·이상치 점검
 ├── analysis.py                    # 3. 이동평균·월별 집계·급변일 시각화
